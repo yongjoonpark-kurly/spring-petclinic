@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: spring-petclinic
+    tags.datadoghq.com/service: spring-petclinic
+  name: spring-petclinic
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spring-petclinic
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        tags.kurlycorp.kr/lang: java
+      labels:
+        app.kubernetes.io/name: spring-petclinic
+        tags.datadoghq.com/service: spring-petclinic
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-group
+                    operator: In
+                    values:
+                      - spot
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: spring-petclinic
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: spring-petclinic
+                topologyKey: topology.kubernetes.io/zone
+              weight: 100
+      containers:
+        - name: spring-petclinic
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_ENV
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/env']
+            - name: DD_SERVICE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['tags.datadoghq.com/service']
+            - name: DD_VERSION
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['app.kubernetes.io/version']
+          image: 318564120968.dkr.ecr.ap-northeast-2.amazonaws.com/springboot-petclinic
+          imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "/bin/sleep 15"]
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: port
+            timeoutSeconds: 5
+          ports:
+            - name: port
+              containerPort: 28080
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: port
+            timeoutSeconds: 5
+          resources:
+            limits:
+              memory: "2Gi"
+            requests:
+              cpu: "500m"
+              memory: "2Gi"
+          startupProbe:
+            failureThreshold: 9
+            httpGet:
+              path: /actuator/health/liveness
+              port: port
+            initialDelaySeconds: 30
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+      serviceAccountName: spring-petclinic
+      terminationGracePeriodSeconds: 60
+      volumes:
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File

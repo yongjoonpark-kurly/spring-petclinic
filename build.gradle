@@ -9,7 +9,7 @@ plugins {
 apply plugin: 'java'
 
 group = 'org.springframework.samples'
-version = '3.0.1-SNAPSHOT'
+version = '3.0.2-SNAPSHOT'
 sourceCompatibility = '17'
 targetCompatibility = 17
 
@@ -54,7 +54,14 @@ jib {
         tags = [version.toString()]
     }
     container {
-        jvmFlags = ['-Xms512m', '-Xdebug']
+        jvmFlags = [
+                '-XX:ActiveProcessorCount=10',
+                '-XX:MaxRAMPercentage=95.0',
+                '-XX:InitialRAMPercentage=20.0',
+                //'-XX:+UseLargePagesInMetaspace',
+                //'-XX:+UseG1GC',
+                '-Dfile.encoding=UTF-8'
+        ]
         mainClass = 'org.springframework.samples.petclinic.PetClinicApplication'
         //args = ['some', 'args']
         ports = ['28080']
