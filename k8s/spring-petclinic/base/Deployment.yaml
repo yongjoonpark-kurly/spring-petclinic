@@ -74,6 +74,8 @@ spec:
           ports:
             - name: port
               containerPort: 28080
+            - name: profiler
+              containerPort: 901
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
